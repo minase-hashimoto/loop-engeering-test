@@ -42,7 +42,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # daily-triageパターンの初期化と実行
-          npx -y @cobusgreyling/loop init . --pattern daily-triage --tool codex
+          # npx -y @cobusgreyling/loop init . --pattern daily-triage --tool codex
+          # initを外し、通常実行のコマンドに変更
+          npx -y @cobusgreyling/loop
 
       - name: Commit and Push results
         run: |
