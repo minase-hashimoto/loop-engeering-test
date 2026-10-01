@@ -1,0 +1,53 @@
+name: Loop Engineering Triage
+
+on:
+  workflow_dispatch: # ブラウザから手動で実行するためのトリガー
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  run-loop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python (LiteLLM起動用)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Start LiteLLM proxy
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          pip install litellm
+          # バックグラウンドでLiteLLMを起動し、GeminiをOpenAI仕様に変換
+          litellm --model gemini/gemini-1.5-flash --port 4000 &
+          sleep 5 # サーバーの起動を数秒待つ
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run loop-engineering
+        env:
+          # loop-engineeringの通信先をローカルのLiteLLMに向ける
+          OPENAI_BASE_URL: "http://localhost:4000"
+          OPENAI_API_KEY: "dummy-key"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # daily-triageパターンの初期化と実行
+          npx -y @cobusgreyling/loop init . --pattern daily-triage --tool codex
+
+      - name: Commit and Push results
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "chore(loop): daily triage [automated]" || echo "No changes to commit"
+          git push
